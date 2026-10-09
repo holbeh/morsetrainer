@@ -1,0 +1,537 @@
+<!doctype html>
+<title>Morsetrainer von DL1TTA</title>
+<meta charset="utf-8">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#141615">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Morsetrainer">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Martian+Mono:wght@300;500;700&display=swap">
+<style>
+/* Layout: eine schmale Spalte wie die Frontplatte eines Funkgeräts –
+   Anzeige oben, Bedienelemente darunter, Start-Taste fest am unteren Rand. */
+:root {
+  --bg: #eceeec;
+  --panel: #f8f9f7;
+  --ink: #1d2120;
+  --muted: #646b68;
+  --line: #d3d8d5;
+  --accent: #b5650a;      /* Lampen-Bernstein */
+  --accent-ink: #ffffff;
+  --lamp-off: #d9dcd9;
+  --stop: #c0392b;
+  --display: "Martian Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --body: "Atkinson Hyperlegible", -apple-system, "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #141615;
+    --panel: #1d201f;
+    --ink: #eef0ee;
+    --muted: #949b97;
+    --line: #2f3432;
+    --accent: #f0a23b;
+    --accent-ink: #1a1305;
+    --lamp-off: #2c302e;
+    --stop: #ff6a5a;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #141615;
+  --panel: #1d201f;
+  --ink: #eef0ee;
+  --muted: #949b97;
+  --line: #2f3432;
+  --accent: #f0a23b;
+  --accent-ink: #1a1305;
+  --lamp-off: #2c302e;
+  --stop: #ff6a5a;
+}
+
+html, body { height: 100%; }
+/* Für den Betrieb als eigenständige Seite (GitHub Pages) */
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+[hidden] { display: none !important; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-tap-highlight-color: transparent;
+}
+.app {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding-inline: 16px;
+  padding-block: 20px 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+h1 .call { color: var(--accent); }
+header p { margin: 0; color: var(--muted); font-size: 0.85rem; }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+
+/* Anzeige */
+.display { display: grid; gap: 6px; justify-items: center; padding-block: 18px 16px; position: relative; }
+.lamp {
+  position: absolute; top: 14px; left: 16px;
+  display: flex; align-items: center; gap: 7px;
+  font-family: var(--display); font-size: 0.62rem; letter-spacing: 0.12em; color: var(--muted);
+}
+.lamp i {
+  width: 11px; height: 11px; border-radius: 50%;
+  background: var(--lamp-off);
+  transition: background 0.02s, box-shadow 0.02s;
+}
+.lamp.on i { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+.count {
+  position: absolute; top: 14px; right: 16px;
+  font-family: var(--display); font-size: 0.62rem; letter-spacing: 0.12em; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.zeichen {
+  font-family: var(--display);
+  font-weight: 300;
+  font-size: clamp(6rem, 30vw, 9rem);
+  line-height: 1.1;
+  min-height: 1.1em;
+}
+.muster {
+  font-family: var(--display);
+  color: var(--accent);
+  font-size: 1.6rem;
+  letter-spacing: 0.25em;
+  min-height: 1.5em;
+}
+.status { color: var(--muted); font-size: 0.95rem; text-align: center; }
+
+/* Abschnitte */
+.label {
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted);
+}
+.row { display: grid; gap: 8px; }
+.row + .row { margin-top: 18px; }
+.row-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.wert { font-family: var(--display); font-weight: 500; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.hint { color: var(--muted); font-size: 0.8rem; font-family: var(--display); font-variant-numeric: tabular-nums; }
+
+input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; margin: 0; }
+
+.chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(2.3rem, 1fr)); gap: 5px; }
+.chip {
+  font-family: var(--display); font-size: 0.95rem; text-align: center;
+  padding-block: 5px; border-radius: 7px;
+  background: var(--bg); color: var(--ink); border: 1px solid var(--line);
+}
+.chip.neu { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+
+.segmente { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 11px; margin-bottom: 16px; }
+.segment {
+  border: 0; border-radius: 8px; padding: 9px 6px; cursor: pointer;
+  font-family: var(--body); font-size: 0.95rem; font-weight: 700;
+  background: transparent; color: var(--muted);
+}
+.segment[aria-pressed="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / 0.15); }
+.klein {
+  border: 0; background: none; padding: 2px 4px; cursor: pointer;
+  font-family: var(--body); font-size: 0.85rem; font-weight: 700; color: var(--accent);
+}
+.wahl { cursor: pointer; font-family: var(--display); font-size: 0.95rem; padding-block: 7px; }
+.wahl[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+.chips + .chips { margin-top: 10px; }
+
+.check { display: flex; align-items: center; gap: 12px; padding-block: 6px; cursor: pointer; }
+.check input { width: 22px; height: 22px; accent-color: var(--accent); margin: 0; }
+
+footer { color: var(--muted); font-size: 0.8rem; text-align: center; font-family: var(--display); }
+
+/* Start-Taste */
+.leiste {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to top, var(--bg) 70%, transparent);
+}
+.taste {
+  display: block; width: 100%; max-width: 34rem; margin: 0 auto;
+  border: 0; border-radius: 14px;
+  padding: 17px;
+  font-family: var(--body); font-size: 1.15rem; font-weight: 700;
+  background: var(--accent); color: var(--accent-ink);
+  cursor: pointer;
+}
+.taste.laeuft { background: var(--stop); color: #fff; }
+.taste:focus-visible, input:focus-visible, .segment:focus-visible, .wahl:focus-visible, .klein:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lamp i { transition: none; }
+}
+</style>
+
+<div class="app">
+  <header>
+    <h1>Morsetrainer <span class="call">DL1TTA</span></h1>
+    <p>Koch-Methode</p>
+  </header>
+
+  <section class="panel display" aria-live="polite">
+    <div class="lamp" id="lamp"><i></i>TON</div>
+    <div class="count" id="count">0 ZEICHEN</div>
+    <div class="zeichen" id="zeichen">k</div>
+    <div class="muster" id="muster">— • —</div>
+    <div class="status" id="status">Bereit. Tippe auf Start.</div>
+  </section>
+
+  <section class="panel">
+    <div class="segmente" role="group" aria-label="Zeichen">
+      <button class="segment" type="button" id="modus-koch" data-modus="koch">Koch-Lektion</button>
+      <button class="segment" type="button" id="modus-auswahl" data-modus="auswahl">Eigene Auswahl</button>
+    </div>
+    <div class="row" id="koch-bereich">
+      <div class="row-head">
+        <span class="label">Lektion</span>
+        <span class="wert" id="lektion-wert"></span>
+      </div>
+      <input type="range" id="lektion" min="1" max="39" step="1">
+      <div class="chips" id="chips"></div>
+    </div>
+    <div class="row" id="auswahl-bereich" hidden>
+      <div class="row-head">
+        <span class="label" id="auswahl-wert"></span>
+        <span><button class="klein" type="button" id="alle">Alle</button><button class="klein" type="button" id="keine">Keine</button></span>
+      </div>
+      <div id="wahl-raster"></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="row">
+      <div class="row-head"><span class="label">Tempo</span><span class="wert" id="wpm-wert"></span></div>
+      <input type="range" id="wpm" min="5" max="40" step="1">
+      <span class="hint" id="wpm-hint"></span>
+    </div>
+    <div class="row">
+      <div class="row-head"><span class="label">Tonhöhe</span><span class="wert" id="freq-wert"></span></div>
+      <input type="range" id="freq" min="400" max="900" step="10">
+    </div>
+    <div class="row">
+      <div class="row-head"><span class="label">Pause vor der Ansage</span><span class="wert" id="pause-wert"></span></div>
+      <input type="range" id="pause" min="3" max="50" step="1">
+    </div>
+    <div class="row">
+      <label class="check"><input type="checkbox" id="sprechen"> Zeichen nach der Pause ansagen</label>
+      <label class="check"><input type="checkbox" id="zeigen"> Morsemuster anzeigen</label>
+    </div>
+  </section>
+
+  <footer>73 de DL1TTA</footer>
+</div>
+
+<div class="leiste">
+  <button class="taste" id="taste" type="button">Start</button>
+</div>
+
+<script>
+// ---------------------------------------------------------------- Daten
+const KOCH = Array.from("KMRSUAPTLOWI.NJEF0Y,VG5/Q9ZH38B?427C1D6X");
+const MORSE = {
+  A: ".-", B: "-...", C: "-.-.", D: "-..", E: ".", F: "..-.", G: "--.", H: "....",
+  I: "..", J: ".---", K: "-.-", L: ".-..", M: "--", N: "-.", O: "---", P: ".--.",
+  Q: "--.-", R: ".-.", S: "...", T: "-", U: "..-", V: "...-", W: ".--", X: "-..-",
+  Y: "-.--", Z: "--..",
+  "0": "-----", "1": ".----", "2": "..---", "3": "...--", "4": "....-",
+  "5": ".....", "6": "-....", "7": "--...", "8": "---..", "9": "----.",
+  ".": ".-.-.-", ",": "--..--", "?": "..--..", "/": "-..-.",
+};
+// Buchstaben nach dem internationalen Buchstabieralphabet (ICAO/NATO),
+// auf Englisch angesagt. Ziffern und Satzzeichen bleiben deutsch.
+const SPRACHE = {
+  A: "Alfa", B: "Bravo", C: "Charlie", D: "Delta", E: "Echo", F: "Foxtrot",
+  G: "Golf", H: "Hotel", I: "India", J: "Juliett", K: "Kilo", L: "Lima",
+  M: "Mike", N: "November", O: "Oscar", P: "Papa", Q: "Quebec", R: "Romeo",
+  S: "Sierra", T: "Tango", U: "Uniform", V: "Victor", W: "Whiskey", X: "X-Ray",
+  Y: "Yankee", Z: "Zulu",
+  ".": "Punkt", ",": "Komma", "?": "Fragezeichen", "/": "Schrägstrich",
+  "0": "Null", "1": "Eins", "2": "Zwei", "3": "Drei", "4": "Vier",
+  "5": "Fünf", "6": "Sechs", "7": "Sieben", "8": "Acht", "9": "Neun",
+};
+const lektionZeichen = (n) => KOCH.slice(0, n + 1);
+const musterText = (m) => Array.from(m).map((s) => (s === "." ? "•" : "—")).join(" ");
+
+// ---------------------------------------------------------------- Einstellungen
+const cfg = { modus: "koch", auswahl: ["K", "M"], lektion: 1, wpm: 20, freq: 600, pause: 15, sprechen: true, zeigen: true };
+try { Object.assign(cfg, JSON.parse(localStorage.getItem("morsetrainer") || "{}")); } catch (e) {}
+const speichern = () => { try { localStorage.setItem("morsetrainer", JSON.stringify(cfg)); } catch (e) {} };
+
+const $ = (id) => document.getElementById(id);
+const anzeigen = {
+  lektion: () => {
+    $("lektion-wert").textContent = `${cfg.lektion} von ${KOCH.length - 1}`;
+    const z = lektionZeichen(cfg.lektion);
+    $("chips").innerHTML = z.map((c, i) =>
+      `<span class="chip${i === z.length - 1 ? " neu" : ""}">${c.toLowerCase()}</span>`).join("");
+  },
+  wpm: () => {
+    const dit = Math.round(1200 / cfg.wpm);
+    $("wpm-wert").textContent = `${cfg.wpm} WPM`;
+    $("wpm-hint").textContent = `Punkt ${dit} ms · Strich ${dit * 3} ms`;
+  },
+  freq: () => { $("freq-wert").textContent = `${cfg.freq} Hz`; },
+  pause: () => { $("pause-wert").textContent = `${(cfg.pause / 10).toFixed(1).replace(".", ",")} s`; },
+};
+for (const name of ["lektion", "wpm", "freq", "pause"]) {
+  const el = $(name);
+  el.value = cfg[name];
+  anzeigen[name]();
+  el.addEventListener("input", () => { cfg[name] = Number(el.value); anzeigen[name](); speichern(); });
+}
+for (const name of ["sprechen", "zeigen"]) {
+  const el = $(name);
+  el.checked = cfg[name];
+  el.addEventListener("change", () => { cfg[name] = el.checked; speichern(); });
+}
+
+// ---------------------------------------------------------------- Eigene Auswahl
+// Buchstaben, Ziffern, Satzzeichen – so findet man die Zeichen schneller
+const GRUPPEN = [
+  Object.keys(MORSE).filter((z) => /[A-Z]/.test(z)).sort(),
+  Object.keys(MORSE).filter((z) => /[0-9]/.test(z)).sort(),
+  [".", ",", "?", "/"],
+];
+$("wahl-raster").innerHTML = GRUPPEN.map((g) => `<div class="chips">${g.map((z) =>
+  `<button type="button" class="chip wahl" data-z="${z}" aria-label="${SPRACHE[z]}">${z.toLowerCase()}</button>`
+).join("")}</div>`).join("");
+
+function auswahlAnzeigen() {
+  for (const k of document.querySelectorAll(".wahl")) {
+    k.setAttribute("aria-pressed", cfg.auswahl.includes(k.dataset.z));
+  }
+  const n = cfg.auswahl.length;
+  $("auswahl-wert").textContent = `${n} Zeichen ausgewählt`;
+}
+function modusAnzeigen() {
+  for (const k of document.querySelectorAll(".segment")) {
+    k.setAttribute("aria-pressed", k.dataset.modus === cfg.modus);
+  }
+  $("koch-bereich").hidden = cfg.modus !== "koch";
+  $("auswahl-bereich").hidden = cfg.modus !== "auswahl";
+}
+$("wahl-raster").addEventListener("click", (e) => {
+  const z = e.target.closest(".wahl")?.dataset.z;
+  if (!z) return;
+  cfg.auswahl = cfg.auswahl.includes(z) ? cfg.auswahl.filter((x) => x !== z) : [...cfg.auswahl, z];
+  auswahlAnzeigen(); speichern();
+});
+$("alle").addEventListener("click", () => { cfg.auswahl = Object.keys(MORSE); auswahlAnzeigen(); speichern(); });
+$("keine").addEventListener("click", () => { cfg.auswahl = []; auswahlAnzeigen(); speichern(); });
+for (const k of document.querySelectorAll(".segment")) {
+  k.addEventListener("click", () => { cfg.modus = k.dataset.modus; modusAnzeigen(); speichern(); });
+}
+auswahlAnzeigen();
+modusAnzeigen();
+
+// Zeichen für das Training: Koch-Lektion (neues Zeichen doppelt) oder eigene Auswahl
+function trainingsZeichen() {
+  if (cfg.modus === "auswahl") return KOCH.filter((z) => cfg.auswahl.includes(z));
+  const z = lektionZeichen(cfg.lektion);
+  return [...z, z[z.length - 1]];
+}
+
+// ---------------------------------------------------------------- Audio
+let ctx = null;
+let ausgang = null;       // Gain-Knoten des aktuellen Zeichens (zum Abbrechen)
+let segmente = [];        // [start, ende] in ctx-Zeit, für die Lampe
+
+function audioStart() {
+  // iOS: Ton auch bei eingeschaltetem Stummschalter abspielen
+  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) {}
+  if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if (ctx.state !== "running") ctx.resume();
+}
+
+function spieleZeichen(z) {
+  const dit = 1.2 / cfg.wpm;   // PARIS-Standard
+  const rampe = 0.005;
+  ausgang = ctx.createGain();
+  ausgang.connect(ctx.destination);
+  const osc = ctx.createOscillator();
+  osc.frequency.value = cfg.freq;
+  const g = ctx.createGain();
+  g.gain.value = 0;
+  osc.connect(g).connect(ausgang);
+
+  let t = ctx.currentTime + 0.05;
+  const start = t;
+  segmente = [];
+  for (const s of MORSE[z]) {
+    const dauer = s === "." ? dit : 3 * dit;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.5, t + rampe);
+    g.gain.setValueAtTime(0.5, t + dauer - rampe);
+    g.gain.linearRampToValueAtTime(0, t + dauer);
+    segmente.push([t, t + dauer]);
+    t += dauer + dit;
+  }
+  const ende = t - dit;
+  osc.start(start);
+  osc.stop(ende + 0.02);
+  return (ende - ctx.currentTime) * 1000;
+}
+
+function lampe() {
+  const jetzt = ctx ? ctx.currentTime : 0;
+  const an = segmente.some(([a, b]) => jetzt >= a && jetzt < b);
+  $("lamp").classList.toggle("on", an);
+  if (laeuft) requestAnimationFrame(lampe);
+  else $("lamp").classList.remove("on");
+}
+
+// ---------------------------------------------------------------- Sprache
+const stimmen = { de: null, en: null };
+function stimmeWaehlen() {
+  const alle = speechSynthesis.getVoices();
+  const sprache = (v, s) => (v.lang || "").replace("_", "-").startsWith(s);
+  stimmen.de = alle.find((v) => sprache(v, "de-DE") && v.localService)
+            || alle.find((v) => sprache(v, "de")) || null;
+  // Bewusst gewählte englische Stimmen – sonst erwischt man leicht eine
+  // Spaßstimme wie "Albert" oder "Bubbles".
+  stimmen.en = ["Samantha", "Daniel", "Karen", "Moira"]
+      .map((n) => alle.find((v) => v.name.startsWith(n) && sprache(v, "en"))).find(Boolean)
+    || alle.find((v) => sprache(v, "en-US") && v.localService)
+    || alle.find((v) => sprache(v, "en")) || null;
+}
+if ("speechSynthesis" in window) {
+  stimmeWaehlen();
+  speechSynthesis.addEventListener?.("voiceschanged", stimmeWaehlen);
+}
+
+function sage(z) {
+  return new Promise((fertig) => {
+    if (!("speechSynthesis" in window)) return fertig();
+    const u = new SpeechSynthesisUtterance(SPRACHE[z] || z);
+    const de = !/[A-Z]/.test(z);
+    u.lang = de ? "de-DE" : "en-US";
+    const stimme = de ? stimmen.de : stimmen.en;
+    if (stimme) u.voice = stimme;
+    u.rate = 0.95;
+    // Sicherheitsnetz: iOS meldet das Ende nicht immer zuverlässig
+    const notfall = setTimeout(fertig, 3000);
+    u.onend = u.onerror = () => { clearTimeout(notfall); fertig(); };
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  });
+}
+
+// ---------------------------------------------------------------- Training
+let laeuft = false;
+let lauf = 0;
+let anzahl = 0;
+
+const warte = (ms, id) => new Promise((r) => setTimeout(() => r(id === lauf), ms));
+
+function zaehler() { $("count").textContent = `${anzahl} ZEICHEN`; }
+
+async function training(id) {
+  let letztes = null;
+  while (id === lauf) {
+    const pool = trainingsZeichen();
+    if (pool.length === 0) {  // Auswahl wurde während des Trainings geleert
+      if (!(await warte(300, id))) return;
+      continue;
+    }
+    const z = pool[Math.floor(Math.random() * pool.length)];
+    if (z === letztes && new Set(pool).size > 1) continue;
+    letztes = z;
+
+    $("zeichen").textContent = "?";
+    $("muster").textContent = "";
+    $("status").textContent = "Höre zu …";
+    if (!(await warte(spieleZeichen(z), id))) return;
+    if (!(await warte(cfg.pause * 100, id))) return;
+
+    anzahl++;
+    zaehler();
+    $("zeichen").textContent = z.toLowerCase();
+    $("muster").textContent = cfg.zeigen ? musterText(MORSE[z]) : "";
+    $("status").textContent = cfg.sprechen ? (SPRACHE[z] || z) : " ";
+    if (cfg.sprechen) {
+      if (!(await warte(150, id))) return;
+      await sage(z);
+      if (!(await warte(450, id))) return;
+    }
+    if (!(await warte(700, id))) return;
+  }
+}
+
+function starten() {
+  if (trainingsZeichen().length === 0) {
+    $("status").textContent = "Bitte zuerst mindestens ein Zeichen auswählen.";
+    return;
+  }
+  audioStart();
+  // iOS gibt die Sprachausgabe nur frei, wenn sie direkt durch einen Tipp ausgelöst wird
+  if ("speechSynthesis" in window && cfg.sprechen) {
+    const u = new SpeechSynthesisUtterance(" ");
+    u.volume = 0;
+    speechSynthesis.speak(u);
+  }
+  laeuft = true;
+  anzahl = 0;
+  zaehler();
+  $("taste").textContent = "Stopp";
+  $("taste").classList.add("laeuft");
+  requestAnimationFrame(lampe);
+  training(++lauf);
+}
+
+function stoppen() {
+  laeuft = false;
+  lauf++;
+  if (ausgang) { try { ausgang.disconnect(); } catch (e) {} }
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+  segmente = [];
+  $("taste").textContent = "Start";
+  $("taste").classList.remove("laeuft");
+  $("zeichen").textContent = "–";
+  $("muster").textContent = "";
+  $("status").textContent = `Beendet – ${anzahl} Zeichen gehört`;
+}
+
+// Offline-Betrieb: App beim ersten Öffnen auf dem Gerät speichern
+if ("serviceWorker" in navigator && window.isSecureContext) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+
+const umschalten = () => (laeuft ? stoppen() : starten());
+$("taste").addEventListener("click", umschalten);
+document.addEventListener("keydown", (e) => {
+  if (e.code === "Space" && !["INPUT", "BUTTON"].includes(e.target.tagName)) { e.preventDefault(); umschalten(); }
+});
+</script>
