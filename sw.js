@@ -1,7 +1,7 @@
 // Service Worker: speichert den Morsetrainer auf dem Gerät, damit er offline läuft.
 // Strategie: sofort aus dem Speicher liefern und im Hintergrund aktualisieren –
 // eine neue Version erscheint also beim übernächsten Start mit Internet.
-const CACHE = "morsetrainer-v1";
+const CACHE = "morsetrainer-v2";
 const DATEIEN = ["./", "./index.html", "./manifest.webmanifest",
                  "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 
